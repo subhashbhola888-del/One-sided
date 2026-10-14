@@ -54,17 +54,28 @@ if (!URL_) {
     await page.waitForTimeout(500);
   }
 
-  /* the local file is the one beside the page; anything else is the fallback.
-     Comparing against the page's own origin is what makes this correct when the
-     page itself is served from freebuff.page. */
-  const pageOrigin = new URL(URL_).origin;
-  const localURL = pageOrigin + '/tu-jaane-na.mp3';
+  /* the local file is the one in the page's own directory, so this holds whether
+     the page is served from a domain root or a subpath like /One-sided/. Use the
+     URL the browser ended up on, so a redirect to the slash form is accounted for. */
+  const dirOf = (u) => {
+    const x = new URL(u);
+    if (!x.pathname.endsWith('/')) {
+      x.pathname = /\.[a-z0-9]+$/i.test(x.pathname)
+        ? x.pathname.replace(/[^/]*$/, '')
+        : x.pathname + '/';
+    }
+    x.search = ''; x.hash = '';
+    return x.href;
+  };
+  const landedOn = page.url();
+  const localURL = new URL('tu-jaane-na.mp3', dirOf(landedOn)).href;
   const usedFallback = state.currentSrc !== localURL;
   const loaded = state.readyState >= 1 && state.duration > 60;
   const ok = loaded && (EXPECT === 'fallback' ? usedFallback : !usedFallback);
 
   console.log('page          ' + URL_);
   console.log('expect        ' + EXPECT);
+  console.log('landed on     ' + landedOn);
   console.log('at load       ' + atLoad.currentSrc + '  readyState ' + atLoad.readyState);
   console.log('after pill    ' + state.currentSrc);
   console.log('readyState    ' + state.readyState + '  networkState ' + state.networkState);

@@ -1,5 +1,10 @@
+# dependencies
 node_modules/
+
+# local QA / headless-browser scaffolding (downloaded, not source)
 .browserlibs/
 .wrangler/
 transformed/
+
+# layout QA screenshots (regenerate with: bash tools/qa.sh public qa/shots)
 qa/

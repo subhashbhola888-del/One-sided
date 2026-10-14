@@ -201,7 +201,7 @@ const PROBE = () => {
     if (r.spills.length) console.log('   spills: ' + r.spills.map((s) => `${s.tag}(${s.left}→${s.right})`).join(', '));
     if (r.textOverflow.length) console.log('   text wider than band: ' + r.textOverflow.map((s) => `${s.tag}(+${Math.max(s.over, s.wide)}px)`).join(', '));
     if (r.innerTall.length) console.log('   content outgrows its section: ' + r.innerTall.map((s) => `${s.id} ${s.h}px in ${s.box}px (+${s.over})`).join(', '));
-    if (r.hintCollide.length) console.log('   hint collides: ' + R.hintCollide.map((s) => `${s.tag}(overlap ${s.gap}px)`).join(', '));
+    if (r.hintCollide.length) console.log('   hint collides: ' + r.hintCollide.map((s) => `${s.tag}(overlap ${s.gap}px)`).join(', '));
     if (r.errors.length) console.log('   JS errors: ' + r.errors.join(' | '));
   }
   console.log(`\n${out.length - fails}/${out.length} viewports clean`);

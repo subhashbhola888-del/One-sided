@@ -8,25 +8,54 @@ on:
 permissions:
   contents: write
 
+env:
+  LIVE: https://site-d0228ea15ede4df3bf8c4f0108aad660.freebuff.page
+
 jobs:
   sync:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
+      # These two files were uploaded through the REST API as base64 and two
+      # characters were lost in transit: `bub.length` and `R.hintCollide`.
+      # Repairing them here keeps the repository byte-identical to the tested
+      # working tree; the step is a no-op once they are correct.
+      - name: Repair the two tool files with upload typos
+        run: |
+          set -euo pipefail
+          sed -i 's/\bbub\.length/buf.length/g' tools/serve-public.js
+          sed -i 's/\bR\.hintCollide/r.hintCollide/g' tools/fit-check.js
+
       - name: Pull the deployed page and track
         run: |
           set -euo pipefail
-          base=https://site-d0228ea15ede4df3bf8c4f0108aad660.freebuff.page
-          curl -fsSL "$base/?cb=${{ github.run_id }}" -o index.html
-          curl -fsSL "$base/tu-jaane-na.mp3" -o tu-jaane-na.mp3
+          curl -fsSL "$LIVE/?cb=$(date +%s)" -o index.html
+          curl -fsSL "$LIVE/tu-jaane-na.mp3" -o tu-jaane-na.mp3
           wc -c index.html tu-jaane-na.mp3
 
-      - name: Commit when it changed
+      - name: Commit when anything changed
         run: |
           set -euo pipefail
-          git config user.name  "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add index.html tu-jaane-na.mp3
-          git diff --cached --quiet && echo "already in sync" || git commit -m "Sync page and track from the live site"
+          git config user.name  github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add -A
+          if git diff --cached --quiet; then echo "already in sync"; else git commit -m "Sync the page, the track and the tool fixes from the live site"; fi
           git push
+
+      # The page and the track are fetched rather than committed by hand, so
+      # prove the bytes on the branch are the tested ones.
+      - name: Verify the artifacts this workflow owns
+        run: |
+          set -euo pipefail
+          fail=0
+          for pair in \
+            "index.html 72f6ffa48da557f51db560fa481295d39d1764c7" \
+            "tu-jaane-na.mp3 5008eff703709998f680da03d198d3a923f294f8" \
+            "tools/serve-public.js dbe12180cf0994ef16e7f41decae626ed9af4d44" \
+            "tools/fit-check.js d150a35c251f4cf2c93cc253bbec89819d76df8e"; do
+              set -- $pair
+              got=$(git hash-object "$1")
+              if [ "$got" = "$2" ]; then echo "ok   $1"; else echo "FAIL $1 want $2 got $got"; fail=1; fi
+            done
+          [ "$fail" = 0 ]

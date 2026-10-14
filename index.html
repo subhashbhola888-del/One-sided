@@ -1,0 +1,1331 @@
+<!DOCTYPE html>
+<html lang="en" class="lenis">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=5">
+<meta name="theme-color" content="#08080c">
+<meta name="color-scheme" content="dark">
+<meta name="description" content="Tu Jaane Na // The Parallel Paths — an animated scrollytelling piece about one-sided love.">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Tu Jaane Na // The Parallel Paths</title>
+
+<!--
+  ============================================================================
+  TU JAANE NA // THE PARALLEL PATHS
+  A single-file, mobile-first 2D animated scrollytelling experience.
+  Zero 3D. Zero photography. Zero raster imagery.
+  Every visual is live vector: two glowing SVG threads drawn by your scroll.
+
+  ── AUDIO ──────────────────────────────────────────────────────────────────
+  The recording is commercial, so it is NOT baked into this file. Four ways
+  to make the pill play the real "Tu Jaane Na", in order of precedence:
+
+    1. Drop the file next to index.html and name it exactly:
+           tu-jaane-na.mp3
+       The page picks it up automatically.
+
+    2. Point the page at any audio URL:
+           index.html?audio=https://your.host/tu-jaane-na.mp3
+
+    3. Tap and HOLD the sound pill for half a second -> "Choose file".
+       It reads the file straight off your own device. Nothing is uploaded
+       anywhere; the choice is saved in this browser (IndexedDB) and the real
+       song plays again on every reload.
+
+    4. If none of those work, the pill opens the file chooser, then falls
+       back to a soft ORIGINAL ambient bed - clearly labelled "Ambient bed"
+       so it is never mistaken for the song.
+
+  ── THE CLIP ───────────────────────────────────────────────────────────────
+  The song plays ONLY the segment 00:46 -> 01:49 (63 seconds) and then loops
+  that hook back to 00:46, so it stays in step with your scroll. Set
+  LOOP_CLIP = false below to stop at 01:49 instead of looping.
+
+  Once tu-jaane-na.mp3 sits next to index.html the song ships with the page:
+  every visitor, on any device, hears it from a single "Tap for sound".
+  The file picker below is only the fallback for devices that cannot reach it.
+  ============================================================================
+-->
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400..900&family=Playfair+Display:ital,wght@1,400..900&family=Plus+Jakarta+Sans:wght@200..800&display=swap">
+
+<style>
+/* ─────────────────────────────  TOKENS  ───────────────────────────── */
+:root{
+  --void:      #08080c;
+  --void-2:    #0d0d13;
+  --amber:     #ffb057;
+  --amber-soft:rgba(255,176,87,.55);
+  --slate:     #e8e8ea;
+  --slate-dim: rgba(232,232,234,.62);
+  --slate-faint:rgba(232,232,234,.34);
+  --stage:     460px;          /* thread band width (mobile = 100vw)      */
+  --band:      min(100vw,var(--stage)); /* the band as actually on screen  */
+  --gutter:    22px;
+
+  --serif: "Cinzel", "Playfair Display", "Times New Roman", serif;
+  --italic: "Playfair Display", "Cinzel", Georgia, serif;
+  --sans: "Plus Jakarta Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+
+/* ────────────────────────  RESET / SCROLL BASE  ────────────────────── */
+*,*::before,*::after{ box-sizing:border-box; }
+html,body{ margin:0; padding:0; }
+html{
+  background:var(--void);
+  -webkit-text-size-adjust:100%;
+  text-size-adjust:100%;
+  scroll-behavior:auto;
+}
+body{
+  background:var(--void);
+  color:var(--slate);
+  font-family:var(--sans);
+  font-weight:300;
+  line-height:1.7;
+  overflow-x:hidden;
+  overscroll-behavior-y:none;
+  -webkit-tap-highlight-color:transparent;
+  -webkit-font-smoothing:antialiased;
+  -moz-osx-font-smoothing:grayscale;
+  font-synthesis:none;
+}
+button{ font:inherit; color:inherit; }
+a{ color:inherit; }
+
+/* Lenis required reset (inlined so there is no extra render-blocking fetch).
+   Lenis adds .lenis / .lenis-smooth / .lenis-stopped to <html>. */
+html.lenis,html.lenis body{ height:auto; }
+.lenis.lenis-smooth{ scroll-behavior:auto !important; }
+.lenis.lenis-smooth [data-lenis-prevent]{ overscroll-behavior:contain; }
+.lenis.lenis-stopped{ overflow:hidden; }
+.lenis.lenis-smooth iframe{ pointer-events:none; }
+
+/* ─────────────────────────────  LAYERS  ────────────────────────────── */
+/* 0 body bg │ 1 veil (dimmer) │ 2 bloom (amber) │ 3 threads │ 4 story
+   │ 6 grain + vignette │ 10 sound pill                                  */
+
+.veil,.bloom{
+  position:fixed; inset:0; pointer-events:none; z-index:1;
+  will-change:opacity;
+}
+.veil{ background:#000; opacity:0; }
+
+.bloom{
+  z-index:2; opacity:0;
+  background:
+    radial-gradient(58% 40% at 51% 52%, rgba(255,176,87,.30) 0%, rgba(255,176,87,.10) 42%, rgba(255,176,87,0) 72%),
+    radial-gradient(120% 70% at 50% 58%, rgba(255,138,44,.11) 0%, rgba(255,138,44,0) 70%);
+  mix-blend-mode:screen;
+}
+
+/* ── fixed thread band ── */
+.stage{
+  position:fixed; top:0; left:50%;
+  transform:translateX(-50%);
+  width:min(100vw,var(--stage));
+  height:100vh; height:100dvh;
+  z-index:3; pointer-events:none;
+  overflow:hidden;
+}
+.stage svg{ display:block; width:100%; height:100%; }
+
+#g-a,#g-b,#g-particles{ transform-origin:50% 50%; }
+.thread-core{ fill:none; stroke-linecap:round; stroke-linejoin:round; vector-effect:non-scaling-stroke; }
+.thread-glow{ fill:none; stroke-linecap:round; stroke-linejoin:round; vector-effect:non-scaling-stroke; filter:url(#softGlow); }
+
+#a-core{ stroke:var(--amber); stroke-width:1.35; }
+#a-glow{ stroke:rgba(255,176,87,.55); stroke-width:7; opacity:.55; }
+#b-core{ stroke:var(--slate); stroke-width:1.15; }
+#b-glow{ stroke:rgba(232,232,234,.42); stroke-width:6; opacity:.38; }
+
+/* ── you / them markers ── */
+.marks{
+  position:fixed; top:0; left:50%;
+  transform:translateX(-50%);
+  width:min(100vw,var(--stage));
+  height:100vh; height:100dvh;
+  z-index:3; pointer-events:none;
+}
+.mark{
+  position:absolute; top:13%;
+  transform:translateX(-50%);
+  display:flex; flex-direction:column; align-items:center; gap:7px;
+  font-family:var(--sans); font-weight:600;
+  font-size:8.5px; letter-spacing:.38em; text-indent:.38em;
+  text-transform:uppercase; white-space:nowrap;
+  opacity:0; transition:opacity 1.2s ease;
+}
+.mark i{
+  display:block; width:4px; height:4px; border-radius:50%;
+}
+.mark-you{ color:rgba(255,176,87,.72); }
+.mark-you i{ background:var(--amber); box-shadow:0 0 10px 2px rgba(255,176,87,.75); }
+.mark-them{ color:rgba(232,232,234,.42); }
+.mark-them i{ background:var(--slate); box-shadow:0 0 9px 1px rgba(232,232,234,.5); }
+.mark.in{ opacity:1; }
+.mark.out{ opacity:0; transition-duration:.7s; }
+
+/* ── grain + vignette ── */
+.grain,.vignette{
+  position:fixed; inset:-10%; pointer-events:none; z-index:6;
+}
+.grain{
+  opacity:.05;
+  background-image:url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E");
+  animation:grainShift 5s steps(6,end) infinite;
+}
+@keyframes grainShift{
+  0%{transform:translate3d(0,0,0)}    16%{transform:translate3d(-2%,1%,0)}
+  33%{transform:translate3d(1%,-2%,0)} 50%{transform:translate3d(-1%,2%,0)}
+  66%{transform:translate3d(2%,1%,0)}  83%{transform:translate3d(-2%,-1%,0)}
+  100%{transform:translate3d(0,0,0)}
+}
+.vignette{
+  inset:0;
+  background:radial-gradient(115% 78% at 50% 46%, rgba(8,8,12,0) 38%, rgba(0,0,0,.42) 82%, rgba(0,0,0,.66) 100%);
+}
+
+/* ───────────────────────────  TYPOGRAPHY  ─────────────────────────── */
+.story{
+  position:relative; z-index:4;
+  width:100%;
+}
+section{
+  position:relative;
+  display:flex; flex-direction:column;
+  align-items:center; justify-content:center;
+  padding:0 var(--gutter);
+  text-align:center;
+}
+section > .inner{
+  width:100%; max-width:var(--stage);
+  display:flex; flex-direction:column; align-items:center;
+}
+
+/* hero is exactly one screen — the world, before the scrolling starts */
+#s1{ height:100vh; height:100dvh; }
+#s2{ height:150vh; }
+#s3{ height:150vh; }
+#s4{ height:200vh; }
+
+.kicker{
+  font-family:var(--sans); font-weight:700;
+  font-size:9.5px; letter-spacing:.46em; text-indent:.46em;
+  text-transform:uppercase; color:rgba(255,176,87,.82);
+  margin:0 0 20px;
+}
+.kicker.dim{ color:var(--slate-faint); letter-spacing:.4em; text-indent:.4em; }
+
+.display{
+  font-family:var(--serif);
+  font-weight:600;
+  text-transform:uppercase;
+  line-height:1.12;
+  letter-spacing:.008em;
+  margin:0;
+  font-size:clamp(27px,8.5vw,40px);
+  color:#fff;
+  text-shadow:0 1px 22px rgba(8,8,12,.96), 0 0 46px rgba(8,8,12,.9);
+}
+.display .accent{ color:var(--amber); }
+
+.rule{
+  width:34px; height:1px; margin:26px auto;
+  background:linear-gradient(90deg,transparent,rgba(255,176,87,.75),transparent);
+}
+.rule.slate{ background:linear-gradient(90deg,transparent,rgba(232,232,234,.45),transparent); }
+
+.prose{
+  font-size:clamp(14.5px,4.2vw,16.5px);
+  line-height:1.85;
+  font-weight:300;
+  color:var(--slate-dim);
+  letter-spacing:.004em;
+  max-width:34ch;
+  margin:0 auto;
+  text-shadow:0 1px 16px rgba(8,8,12,.95), 0 0 40px rgba(8,8,12,.92);
+}
+.prose + .prose{ margin-top:1.05em; }
+.prose em{ font-family:var(--italic); font-style:italic; color:rgba(232,232,234,.86); }
+.prose strong{ font-weight:500; color:rgba(255,176,87,.92); }
+.prose .brk{ display:block; }
+
+/* the song */
+.lyric{
+  font-family:var(--italic); font-style:italic; font-weight:500;
+  font-size:clamp(19px,5.9vw,26px);
+  line-height:1.5;
+  color:rgba(232,232,234,.9);
+  margin:0 auto;
+  max-width:24ch;
+  text-shadow:0 1px 20px rgba(8,8,12,.96), 0 0 50px rgba(8,8,12,.9);
+}
+.lyric .dim-verse{ display:block; color:var(--slate-dim); }
+
+.climax{
+  font-family:var(--serif); font-weight:700;
+  text-transform:uppercase;
+  font-size:clamp(42px,14.5vw,74px);
+  line-height:1;
+  letter-spacing:.055em;
+  text-indent:.055em;
+  margin:.22em 0 0;
+  background:linear-gradient(180deg,#fff 0%, var(--amber) 52%, #ff8a2c 100%);
+  -webkit-background-clip:text; background-clip:text;
+  -webkit-text-fill-color:transparent; color:transparent;
+  filter:drop-shadow(0 0 26px rgba(255,176,87,.5)) drop-shadow(0 0 60px rgba(255,138,44,.28));
+}
+.climax-sub{
+  font-family:var(--sans); font-weight:600;
+  font-size:9.5px; letter-spacing:.5em; text-indent:.5em;
+  text-transform:uppercase; color:rgba(232,232,234,.5);
+  margin:16px 0 0;
+}
+
+/* final */
+.signoff{
+  font-family:var(--italic); font-style:italic;
+  font-size:clamp(16.5px,5vw,21px);
+  line-height:1.7;
+  color:rgba(255,176,87,.92);
+  max-width:26ch; margin:0 auto;
+  text-shadow:0 1px 20px rgba(8,8,12,.96);
+}
+
+/* ─────────────────────────────  REVEALS  ──────────────────────────── */
+.reveal{
+  opacity:0; transform:translateY(26px);
+  transition:opacity 1.05s cubic-bezier(.22,.68,.16,1), transform 1.05s cubic-bezier(.22,.68,.16,1);
+  transition-delay:var(--d,0s);
+  will-change:opacity,transform;
+}
+.reveal.in{ opacity:1; transform:none; }
+.reveal.blur{ filter:blur(8px); transition-property:opacity,transform,filter; }
+.reveal.blur.in{ filter:blur(0); }
+
+/* letter-spacing bloom on the climax title */
+.climax.reveal{ letter-spacing:.16em; text-indent:.16em; transition-duration:1.4s; }
+.climax.reveal.in{ letter-spacing:.055em; text-indent:.055em; }
+
+/* ────────────────────────────  BEAT SPACING  ──────────────────────── */
+.beat{ width:100%; }
+.beat + .beat{ margin-top:16vh; }
+#s1 .beat + .beat{ margin-top:8vh; }
+#s4 .beat + .beat{ margin-top:14vh; }
+
+/* ─────────────────────────────  CTAs  ─────────────────────────────── */
+.ctas{
+  display:flex; flex-wrap:wrap; gap:12px;
+  justify-content:center; align-items:center;
+  width:100%; max-width:340px; margin:0 auto;
+}
+.btn{
+  appearance:none; border:0; cursor:pointer;
+  position:relative;
+  padding:15px 26px; border-radius:999px;
+  font-family:var(--sans); font-weight:600;
+  font-size:11px; letter-spacing:.16em; text-transform:uppercase;
+  color:var(--slate);
+  background:rgba(232,232,234,.06);
+  border:1px solid rgba(232,232,234,.16);
+  -webkit-backdrop-filter:blur(14px); backdrop-filter:blur(14px);
+  transition:transform .35s cubic-bezier(.22,.68,.16,1), background .35s ease, border-color .35s ease, box-shadow .35s ease;
+  flex:1 1 auto; min-width:144px;
+}
+.btn:hover{ background:rgba(232,232,234,.11); border-color:rgba(232,232,234,.3); }
+.btn:active{ transform:scale(.96); }
+.btn-primary{
+  background:linear-gradient(180deg, rgba(255,176,87,.20), rgba(255,138,44,.10));
+  border-color:rgba(255,176,87,.45);
+  color:#ffd9ab;
+  box-shadow:0 0 26px -10px rgba(255,176,87,.6);
+}
+.btn-primary:hover{ background:linear-gradient(180deg, rgba(255,176,87,.3), rgba(255,138,44,.16)); border-color:rgba(255,176,87,.7); }
+.btn:focus-visible{ outline:2px solid var(--amber); outline-offset:3px; }
+
+/* ───────────────────────────  SOUND PILL  ─────────────────────────── */
+.sound{
+  position:fixed; z-index:10;
+  user-select:none; -webkit-user-select:none; touch-action:manipulation;
+  top:calc(env(safe-area-inset-top,0px) + 14px); right:14px;
+  display:inline-flex; align-items:center; gap:9px;
+  padding:11px 18px 11px 16px; border-radius:999px;
+  cursor:pointer;
+  background:rgba(232,232,234,.10);
+  border:1px solid rgba(245,245,247,.24);
+  -webkit-backdrop-filter:blur(22px) saturate(155%);
+  backdrop-filter:blur(22px) saturate(155%);
+  box-shadow:0 12px 36px -18px rgba(0,0,0,.95), inset 0 1px 0 rgba(255,255,255,.12);
+  transition:transform .35s cubic-bezier(.22,.68,.16,1), border-color .4s ease, background .4s ease, box-shadow .4s ease;
+  will-change:transform;
+}
+.sound:active{ transform:scale(.95); }
+.sound:focus-visible{ outline:2px solid var(--amber); outline-offset:3px; }
+.sound-label{
+  font-family:var(--sans); font-weight:600;
+  font-size:9.5px; letter-spacing:.16em; text-transform:uppercase;
+  color:var(--slate-dim); white-space:nowrap;
+}
+.sound.on .sound-label{ color:rgba(255,176,87,.95); }
+.eq{ display:inline-flex; align-items:flex-end; gap:2.5px; height:13px; width:14px; }
+.eq i{
+  display:block; width:2px; height:3px; border-radius:2px;
+  background:rgba(232,232,234,.42);
+  transform-origin:bottom;
+  transition:background .4s ease;
+}
+.sound.on .eq i{ background:var(--amber); box-shadow:0 0 7px rgba(255,176,87,.85); }
+.sound.on .eq i:nth-child(1){ animation:eqA 1.05s ease-in-out infinite; }
+.sound.on .eq i:nth-child(2){ animation:eqB .82s ease-in-out infinite; }
+.sound.on .eq i:nth-child(3){ animation:eqC 1.24s ease-in-out infinite; }
+.sound.on .eq i:nth-child(4){ animation:eqB 1.1s ease-in-out infinite reverse; }
+@keyframes eqA{ 0%,100%{height:3px} 50%{height:13px} }
+@keyframes eqB{ 0%,100%{height:5px} 50%{height:11px} }
+@keyframes eqC{ 0%,100%{height:3px} 45%{height:9px} }
+
+/* ───────────────────────────  SCROLL HINT  ────────────────────────── */
+.hint{
+  position:absolute; left:50%; bottom:calc(env(safe-area-inset-bottom,0px) + 26px);
+  transform:translateX(-50%);
+  display:flex; flex-direction:column; align-items:center; gap:10px;
+  font-family:var(--sans); font-weight:600;
+  font-size:8.5px; letter-spacing:.42em; text-indent:.42em;
+  text-transform:uppercase; color:rgba(232,232,234,.34);
+  will-change:opacity;
+}
+.hint span.line{
+  display:block; width:1px; height:38px; overflow:hidden; position:relative;
+  background:rgba(232,232,234,.14);
+}
+.hint span.line::after{
+  content:""; position:absolute; inset:0;
+  background:linear-gradient(180deg, rgba(255,176,87,0), var(--amber));
+  animation:hintDrop 2.1s cubic-bezier(.6,.05,.3,1) infinite;
+}
+@keyframes hintDrop{ 0%{transform:translateY(-100%)} 60%,100%{transform:translateY(100%)} }
+
+/* ─────────────────────────────  TOAST  ────────────────────────────── */
+.toast{
+  position:fixed; z-index:11; left:50%; bottom:calc(env(safe-area-inset-bottom,0px) + 112px);
+  transform:translate(-50%,16px);
+  padding:11px 18px; border-radius:999px;
+  background:rgba(232,232,234,.09);
+  border:1px solid rgba(232,232,234,.18);
+  -webkit-backdrop-filter:blur(16px); backdrop-filter:blur(16px);
+  font-size:11px; font-weight:500; letter-spacing:.06em;
+  color:var(--slate); white-space:nowrap;
+  opacity:0; pointer-events:none;
+  transition:opacity .5s ease, transform .5s cubic-bezier(.22,.68,.16,1);
+}
+.toast.show{ opacity:1; transform:translate(-50%,0); }
+
+/* ─────────────────────  RESPONSIVE / FALLBACKS  ───────────────────── */
+/* Wider screens: the piece scales as one unit. The thread band grows with the
+   screen (out to a comfortable maximum) and every size is expressed as a
+   fraction of that band, so a tablet reads as a larger phone — never a narrow
+   strip with dead gutters down the sides. The phone design is authored at a
+   390px band; the ratios below are those same sizes re-expressed against the
+   live band width.
+
+   --fit is the single scale reference: the smaller of the band width and 74vh.
+   On a phone the width is the limit, so nothing changes; on a wide *and* short
+   screen (tablet landscape, laptop) the height takes over so the copy cannot
+   spill off the bottom of the screen. */
+@media (min-width:520px){
+  :root{
+    --gutter:32px;
+    --stage:min(100vw - 64px, 800px);   /* band fills the screen, max 800px */
+    --band:var(--stage);
+    --fit:min(var(--band), 74vh);
+  }
+  .stage,.marks{ box-shadow:0 0 0 1px rgba(232,232,234,.045); }
+
+  /* type scales with the band, capped by screen height */
+  .display{ font-size:calc(var(--fit) * .082); }
+  .climax{ font-size:calc(var(--fit) * .138); }
+  .lyric{ font-size:calc(var(--fit) * .057); }
+  .prose{ font-size:calc(var(--fit) * .0405); }
+  .signoff{ font-size:calc(var(--fit) * .048); }
+  .kicker,.climax-sub{ font-size:clamp(11px,calc(var(--band) * .017),14px); }
+  .mark{ font-size:clamp(10.5px,calc(var(--band) * .0155),13px); }
+  .hint{ font-size:clamp(9.5px,calc(var(--band) * .0145),11.5px); }
+
+  /* furniture scales with the band too */
+  .rule{ width:calc(var(--fit) * .062); margin:calc(var(--fit) * .048) auto; }
+  .ctas{ max-width:calc(var(--fit) * .7); gap:14px; }
+  .btn{ font-size:clamp(11px,calc(var(--band) * .017),13px); padding:17px 30px; min-width:190px; }
+  .sound{ padding:12px 20px 12px 18px; gap:10px; top:calc(env(safe-area-inset-top,0px) + 20px); right:20px; }
+  .sound-label{ font-size:clamp(11px,calc(var(--band) * .0165),13px); }
+  .eq{ width:16px; height:15px; }
+  .toast{ font-size:12.5px; }
+}
+/* tall portrait tablets (iPad Pro 12.9", Surface, …): the screen is narrow
+   relative to its height, so let the band fill it the way it does on a phone */
+@media (min-width:520px) and (orientation:portrait) and (min-height:1000px){
+  :root{ --stage:min(100vw - 48px, 1000px); --band:var(--stage); --fit:min(var(--band), 74vh); }
+}
+@media (max-height:640px){
+  .mark{ top:9%; }
+  #s1 .beat + .beat{ margin-top:5vh; }
+  .hint{ display:none; }
+}
+/* short-but-wide screens (tablet landscape, laptop): pull the beat spacing in so
+   the one-screen hero clears the scroll hint and no section outgrows itself */
+@media (min-width:520px) and (max-height:840px){
+  .beat + .beat{ margin-top:11vh; }
+  #s1 .beat + .beat{ margin-top:5vh; }
+  #s4 .beat + .beat{ margin-top:9vh; }
+  .hint{ bottom:calc(env(safe-area-inset-bottom,0px) + 16px); }
+}
+@media (prefers-reduced-motion:reduce){
+  .reveal{ transition-duration:.01ms; }
+  .grain{ animation:none; }
+  .hint span.line::after{ animation:none; }
+}
+</style>
+</head>
+<body>
+
+<!-- ═══════════════ 1 · DIMMER + AMBER BLOOM (behind threads) ═══════════════ -->
+<div class="veil"  id="veil"  aria-hidden="true"></div>
+<div class="bloom" id="bloom" aria-hidden="true"></div>
+
+<!-- ═══════════════════ 2 · THE TWO GLOWING THREADS (SVG) ═══════════════════ -->
+<div class="stage" aria-hidden="true">
+  <svg id="threads" viewBox="0 0 390 844" preserveAspectRatio="none" role="presentation">
+    <defs>
+      <filter id="softGlow" x="-60%" y="-20%" width="220%" height="140%" filterUnits="objectBoundingBox">
+        <feGaussianBlur stdDeviation="7" />
+      </filter>
+    </defs>
+
+    <!-- THREAD B — THEM: pure slate-white, calm, unwavering -->
+    <g id="g-b">
+      <path id="b-glow" class="thread-glow"></path>
+      <path id="b-core" class="thread-core"></path>
+    </g>
+
+    <!-- THREAD A — YOU: amber, yearning, erratic -->
+    <g id="g-a">
+      <path id="a-glow" class="thread-glow"></path>
+      <path id="a-core" class="thread-core"></path>
+    </g>
+
+    <!-- emitted glow as Thread A dissolves -->
+    <g id="g-particles" opacity="1"></g>
+  </svg>
+</div>
+
+<!-- who is who (fades out after the entry) -->
+<div class="marks" aria-hidden="true">
+  <span class="mark mark-you"  id="mark-you"  style="left:31.2%"><i></i>You</span>
+  <span class="mark mark-them" id="mark-them" style="left:69.5%"><i></i>Them</span>
+</div>
+
+<div class="grain" aria-hidden="true"></div>
+<div class="vignette" aria-hidden="true"></div>
+
+<!-- ══════════════════════════ 3 · THE STORY ══════════════════════════ -->
+<main class="story" id="story">
+
+  <!-- ── VIEWPORT 1 · 0–20% · THE UNNOTICED GRAVITY ── -->
+  <section id="s1">
+    <div class="inner">
+      <div class="beat">
+        <p class="kicker reveal" style="--d:.15s">Tu Jaane Na &nbsp;//&nbsp; The Parallel Paths</p>
+        <h1 class="display reveal" style="--d:.3s">
+          What does one&#8209;sided<br>love actually<br>feel like?
+        </h1>
+      </div>
+
+      <div class="beat">
+        <div class="rule reveal" style="--d:.55s"></div>
+        <p class="prose reveal" style="--d:.65s">
+          It&rsquo;s not just having feelings for someone.
+          <span class="brk"></span>
+          It&rsquo;s constantly rearranging your entire world
+          just to cross their path once.
+        </p>
+      </div>
+    </div>
+    <div class="hint" id="hint"><span>Scroll</span><span class="line"></span></div>
+  </section>
+
+  <!-- ── VIEWPORT 2 · 20–50% · THE ILLUSION OF CLOSENESS ── -->
+  <section id="s2">
+    <div class="inner">
+
+      <div class="beat">
+        <p class="kicker dim reveal">01 &nbsp;/&nbsp; The Illusion of Closeness</p>
+        <h2 class="display reveal" style="--d:.1s">
+          In the same room.<br><span class="accent">Worlds apart.</span>
+        </h2>
+      </div>
+
+      <div class="beat">
+        <div class="rule slate reveal"></div>
+        <p class="prose reveal" style="--d:.05s">
+          You memorise the shift in their mood.
+          You laugh at jokes they made three minutes ago.
+        </p>
+        <p class="prose reveal" style="--d:.25s">
+          You feel so close that for a second,
+          you convince yourself <em>they must feel it too.</em>
+        </p>
+      </div>
+
+      <div class="beat">
+        <p class="prose reveal" style="--d:.05s">
+          Two lines, drifting through the same dark,
+          curving toward each other like they were always
+          meant to be one continuous thing.
+        </p>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ── VIEWPORT 3 · 50–80% · THE BREAKING POINT ── -->
+  <section id="s3">
+    <div class="inner">
+
+      <div class="beat">
+        <p class="kicker dim reveal">02 &nbsp;/&nbsp; The Breaking Point</p>
+        <p class="lyric reveal" style="--d:.1s">
+          <span class="dim-verse">Milke bhi hum na mile&hellip;</span>
+          tumse na jaane kyun.
+        </p>
+      </div>
+
+      <div class="beat">
+        <h3 class="climax reveal">Tu Jaane Na</h3>
+        <p class="climax-sub reveal" style="--d:.3s">And you never will</p>
+      </div>
+
+      <div class="beat">
+        <div class="rule reveal"></div>
+        <p class="prose reveal" style="--d:.1s">
+          The hardest silence isn&rsquo;t being ignored.
+        </p>
+        <p class="prose reveal" style="--d:.3s">
+          It&rsquo;s standing right next to them while they look
+          straight through you &mdash; completely unaware that every
+          unsent message on your phone is <strong>addressed to them.</strong>
+        </p>
+      </div>
+
+      <div class="beat">
+        <p class="prose reveal" style="--d:.15s">
+          Two pixels. That is the entire distance between
+          <em>everything you feel</em> and <em>nothing they know.</em>
+        </p>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ── VIEWPORT 4 · 80–100% · THE UNBROKEN CIRCLE ── -->
+  <section id="s4">
+    <div class="inner">
+
+      <div class="beat">
+        <p class="kicker dim reveal">03 &nbsp;/&nbsp; The Unbroken Circle</p>
+        <p class="prose reveal" style="--d:.1s">
+          You never confess, not because you lack courage,
+          but because you would rather have them in your life
+          as a friend than lose them completely as a memory.
+        </p>
+      </div>
+
+      <div class="beat">
+        <div class="rule slate reveal"></div>
+        <p class="signoff reveal" style="--d:.1s">
+          Some songs only exist because some words
+          were never meant to be heard.
+        </p>
+      </div>
+
+      <div class="beat">
+        <div class="ctas">
+          <button class="btn btn-primary reveal" id="shareBtn" style="--d:.05s">Share this thought</button>
+          <button class="btn reveal" id="rewindBtn" style="--d:.15s">Rewind</button>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+</main>
+
+<!-- ═══════════════ 4 · FLOATING GLASS SOUND PILL ═══════════════ -->
+<button class="sound" id="soundBtn" type="button" aria-pressed="false" aria-label="Play background sound">
+  <span class="eq" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+  <span class="sound-label" id="soundLabel">Tap for sound</span>
+</button>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<!-- The real track. Either rename your file to tu-jaane-na.mp3 and drop it
+     next to this page, pass ?audio=<url>, or hold the sound pill to choose
+     the file from this device. Nothing is ever uploaded. -->
+<audio id="bgAudio" src="./tu-jaane-na.mp3" loop preload="metadata" playsinline></audio>
+<input id="songPicker" type="file" hidden
+       accept="audio/*,.mp3,.m4a,.aac,.wav,.ogg,.opus,.flac"
+       aria-label="Choose the Tu Jaane Na audio file">
+
+<!-- ═══════════ 5 · THREAD PATH DATA (authored as smooth waypoints) ═══════════
+     Coordinates live in the 390 × 844 viewBox (= the on-screen band).
+     y runs top → bottom in step with scroll; x weaves across the column.
+     Thread B holds x=251 from y=436 to y=880 and Thread A holds x=249 across
+     the same run, so the whole of Act III is a perfectly parallel, exactly
+     2-unit gap that never intersects.                                       -->
+<script type="application/json" id="thread-data">
+{
+  "a": [[100,-8],[92,54],[124,112],[182,164],[214,212],[234,258],[208,306],
+        [228,352],[216,396],[234,418],[245,428],[249,436],
+        [249,500],[249,560],[249,620],[249,680],[249,730],
+        [246,790],[240,850],[236,900]],
+  "b": [[274,-8],[271,100],[267,200],[262,300],[257,390],[252,414],[251,428],
+        [251,436],[251,500],[251,560],[251,620],[251,680],[251,740],[251,800],
+        [251,860],[251,910]],
+  "parallelFrom": 436,
+  "particleFrom": 0.62,
+  "particleTo": 0.965
+}
+</script>
+
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.15.0/dist/gsap.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.15.0/dist/ScrollTrigger.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/lenis@1.3.26/dist/lenis.min.js"></script>
+
+<script>
+(function () {
+  'use strict';
+
+  var d = document;
+  var SVGNS = 'http://www.w3.org/2000/svg';
+  var REDUCED = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+  var HAS_GSAP = !!(window.gsap && window.ScrollTrigger);
+  var $ = function (s) { return d.querySelector(s); };
+
+  /* always start this piece at the beginning */
+  if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
+
+  /* ══════════════════════════════════════════════════════════════════
+     1 · GEOMETRY — waypoints → smooth cubic béziers
+     ══════════════════════════════════════════════════════════════════ */
+  var DATA = JSON.parse(d.getElementById('thread-data').textContent);
+
+  /* Monotone cubic Hermite through the waypoints, x interpolated against y.
+     Fritsch-Carlson derivative limiting is what makes this exact: no spline
+     overshoot, so Thread A can converge on Thread B and hold a clean, constant
+     gap without bulging into it. Where consecutive waypoints share an x, the
+     segment is emitted as a true vertical line. */
+  function toPath(pts) {
+    var n = pts.length;
+    if (n < 2) return '';
+    var dy = [], s = [], m = new Array(n), i, j;
+    for (i = 0; i < n - 1; i++) {
+      dy[i] = pts[i + 1][1] - pts[i][1];
+      s[i] = (pts[i + 1][0] - pts[i][0]) / dy[i];
+    }
+    m[0] = s[0]; m[n - 1] = s[n - 2];
+    for (i = 1; i < n - 1; i++) {
+      if (s[i - 1] * s[i] <= 0) { m[i] = 0; }
+      else {
+        var w1 = 2 * dy[i] + dy[i - 1], w2 = dy[i] + 2 * dy[i - 1];
+        m[i] = (w1 + w2) / (w1 / s[i - 1] + w2 / s[i]);
+      }
+    }
+    for (j = 0; j < n - 1; j++) {
+      if (s[j] === 0) { m[j] = 0; m[j + 1] = 0; continue; }
+      var a = m[j] / s[j], b = m[j + 1] / s[j], hh = Math.sqrt(a * a + b * b);
+      if (hh > 3) { m[j] = 3 * s[j] * a / hh; m[j + 1] = 3 * s[j] * b / hh; }
+    }
+    var out = ['M' + pts[0][0] + ' ' + pts[0][1]];
+    for (i = 0; i < n - 1; i++) {
+      var t = dy[i] / 3;
+      out.push('C' + (pts[i][0] + m[i] * t).toFixed(2) + ' ' + (pts[i][1] + t).toFixed(2) + ',' +
+                    (pts[i + 1][0] - m[i + 1] * t).toFixed(2) + ' ' + (pts[i + 1][1] - t).toFixed(2) + ',' +
+                    pts[i + 1][0] + ' ' + pts[i + 1][1]);
+    }
+    return out.join(' ');
+  }
+
+  var aGlow = d.getElementById('a-glow'), aCore = d.getElementById('a-core'),
+      bGlow = d.getElementById('b-glow'), bCore = d.getElementById('b-core'),
+      gA = d.getElementById('g-a'), gB = d.getElementById('g-b'),
+      gP = d.getElementById('g-particles');
+
+  var dA = toPath(DATA.a), dB = toPath(DATA.b);
+  aGlow.setAttribute('d', dA); aCore.setAttribute('d', dA);
+  bGlow.setAttribute('d', dB); bCore.setAttribute('d', dB);
+
+  var LEN_A = aCore.getTotalLength();
+  var LEN_B = bCore.getTotalLength();
+
+  /* ══════════════════════════════════════════════════════════════════
+     2 · THE DISSOLVE — glow emitted by Thread A in Act IV
+     ══════════════════════════════════════════════════════════════════ */
+  (function seedParticles() {
+    var count = REDUCED ? 12 : 38;
+    for (var i = 0; i < count; i++) {
+      var t = DATA.particleFrom + Math.random() * (DATA.particleTo - DATA.particleFrom);
+      var p = aCore.getPointAtLength(LEN_A * t);
+      var c = d.createElementNS(SVGNS, 'circle');
+      c.setAttribute('cx', (p.x + (Math.random() * 2 - 1) * 20).toFixed(1));
+      c.setAttribute('cy', (p.y + (Math.random() * 2 - 1) * 34).toFixed(1));
+      c.setAttribute('r', (0.7 + Math.random() * 1.7).toFixed(2));
+      c.setAttribute('fill', Math.random() > 0.25 ? '#ffb057' : '#ffdfb0');
+      c.setAttribute('data-o', (0.22 + Math.random() * 0.68).toFixed(2));
+      c.style.opacity = '0';
+      gP.appendChild(c);
+    }
+  })();
+
+  /* ══════════════════════════════════════════════════════════════════
+     3 · SMOOTH SCROLL (Lenis) — progressive enhancement, GSAP drives it
+     ══════════════════════════════════════════════════════════════════ */
+  var lenis = null;
+  if (window.Lenis && !REDUCED) {
+    lenis = new window.Lenis({
+      duration: 1.15,
+      easing: function (t) { return Math.min(1, 1.001 - Math.pow(2, -10 * t)); },
+      smoothWheel: true,
+      syncTouch: false,        /* native momentum on touch = real inertia, no jank */
+      touchMultiplier: 1.5,
+      wheelMultiplier: 1,
+      orientation: 'vertical',
+      autoRaf: false,
+      autoResize: true
+    });
+    if (HAS_GSAP) {
+      lenis.on('scroll', window.ScrollTrigger.update);
+      window.gsap.ticker.add(function (time) { lenis.raf(time * 1000); });
+      window.gsap.ticker.lagSmoothing(0);
+    } else {
+      var raf = function (time) { lenis.raf(time); requestAnimationFrame(raf); };
+      requestAnimationFrame(raf);
+    }
+  }
+
+  /* ══════════════════════════════════════════════════════════════════
+     4 · REVEALS — CSS transitions, triggered by ScrollTrigger
+         (IntersectionObserver when GSAP is unavailable)
+     ══════════════════════════════════════════════════════════════════ */
+  var reveals = [].slice.call(d.querySelectorAll('.reveal'));
+  var alreadyIn = [], onScroll = [];
+
+  reveals.forEach(function (el) {
+    (el.getBoundingClientRect().top < window.innerHeight * 0.95 ? alreadyIn : onScroll).push(el);
+  });
+
+  if (alreadyIn.length) {
+    setTimeout(function () {
+      alreadyIn.forEach(function (el) { el.classList.add('in'); });
+    }, 260);
+  }
+
+  if (onScroll.length) {
+    if (HAS_GSAP) {
+      onScroll.forEach(function (el) {
+        window.ScrollTrigger.create({
+          trigger: el, start: 'top 88%', once: true,
+          onEnter: function () { el.classList.add('in'); }
+        });
+      });
+    } else if ('IntersectionObserver' in window) {
+      var io = new IntersectionObserver(function (entries) {
+        entries.forEach(function (e) {
+          if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); }
+        });
+      }, { rootMargin: '0px 0px -12% 0px' });
+      onScroll.forEach(function (el) { io.observe(el); });
+    } else {
+      onScroll.forEach(function (el) { el.classList.add('in'); });
+    }
+  }
+
+  /* who is who — in, then out as the story takes over */
+  setTimeout(function () {
+    var y = d.getElementById('mark-you'), t = d.getElementById('mark-them');
+    if (y) y.classList.add('in');
+    if (t) t.classList.add('in');
+  }, 900);
+
+  /* ══════════════════════════════════════════════════════════════════
+     5 · THE MASTER TIMELINE — one scrub, mapped to the whole document
+         0.00 → 0.20  Act I    the unnoticed gravity
+         0.20 → 0.50  Act II   the illusion of closeness   (the weave)
+         0.50 → 0.80  Act III  the breaking point          (2px, parallel)
+         0.80 → 1.00  Act IV   the unbroken circle          (dissolve)
+     ══════════════════════════════════════════════════════════════════ */
+  function initGSAP() {
+    var gsap = window.gsap;
+    gsap.registerPlugin(window.ScrollTrigger);
+    window.ScrollTrigger.config({ ignoreMobileResize: true });
+
+    var tl = gsap.timeline({
+      defaults: { ease: 'none' },
+      scrollTrigger: {
+        trigger: '#story',
+        start: 'top top',
+        end: 'bottom bottom',
+        scrub: REDUCED ? true : 1
+      }
+    });
+
+    [aCore, aGlow, bCore, bGlow].forEach(function (el, i) {
+      var L = (i < 2) ? LEN_A : LEN_B;
+      gsap.set(el, { strokeDasharray: L, strokeDashoffset: L });
+    });
+    /* stroke-dashoffset ← scroll: the whole drawing mechanic */
+    tl.to([aCore, aGlow], { strokeDashoffset: 0, duration: 1 }, 0)
+      .to([bCore, bGlow], { strokeDashoffset: 0, duration: 1 }, 0);
+
+    /* marks and scroll hint leave once the reading begins */
+    tl.to('.marks', { opacity: 0, duration: .07 }, .09)
+      .to('#hint',  { opacity: 0, duration: .05 }, .03);
+
+    /* ── ACT II · the two threads wind past each other and settle ── */
+    tl.to(gA, { x:  15, duration: .08, ease: 'sine.inOut' }, .16)
+      .to(gA, { x: -11, duration: .08, ease: 'sine.inOut' }, .24)
+      .to(gA, { x:   9, duration: .08, ease: 'sine.inOut' }, .32)
+      .to(gA, { x:  -5, duration: .06, ease: 'sine.inOut' }, .40)
+      .to(gA, { x:   0, duration: .04, ease: 'sine.out'   }, .46);
+
+    /* ── ACT III · the screen dips, amber blooms behind the lines ── */
+    tl.to('.veil',   { opacity: .55, duration: .16, ease: 'sine.out' }, .50)
+      .to('.bloom',  { opacity: 1,   duration: .18, ease: 'sine.out' }, .50)
+      .to('#a-glow', { opacity: .95, duration: .16, ease: 'sine.out' }, .52)
+      .to('#b-glow', { opacity: .62, duration: .16, ease: 'sine.out' }, .52)
+      .to('.veil',   { opacity: .32, duration: .20, ease: 'sine.inOut' }, .78)
+      .to('.bloom',  { opacity: .58, duration: .20, ease: 'sine.inOut' }, .78);
+
+    /* ── ACT IV · Thread A dissolves; its light scatters ── */
+    tl.to(gA,       { opacity: 0, duration: .17, ease: 'sine.in' }, .81)
+      .to('#a-glow', { opacity: 0, duration: .10 }, .81)
+      .to('#g-particles circle', {
+        opacity: function (i, t) { return parseFloat(t.getAttribute('data-o')); },
+        y: -9,
+        duration: .08,
+        ease: 'sine.out',
+        stagger: { amount: .12, from: 'random' }
+      }, .80);
+
+    /* layout can only be measured after the webfonts land */
+    if (d.fonts && d.fonts.ready) d.fonts.ready.then(function () { window.ScrollTrigger.refresh(); });
+    window.addEventListener('load', function () { window.ScrollTrigger.refresh(); });
+  }
+
+  /* ══════════════════════════════════════════════════════════════════
+     6 · NO-GSAP FALLBACK — identical behaviour, plain scroll maths
+     ══════════════════════════════════════════════════════════════════ */
+  function initFallback() {
+    [aCore, aGlow, bCore, bGlow].forEach(function (el, i) {
+      el.style.strokeDasharray = (i < 2) ? LEN_A : LEN_B;
+    });
+    var veil = $('#veil'), bloom = $('#bloom'), marks = d.querySelector('.marks'),
+        hint = d.getElementById('hint'),
+        circles = [].slice.call(gP.querySelectorAll('circle')),
+        ticking = false;
+
+    var clamp01 = function (v) { return v < 0 ? 0 : (v > 1 ? 1 : v); };
+    var ramp = function (p, a, b) { return clamp01((p - a) / (b - a)); };
+
+    function apply() {
+      ticking = false;
+      var max = Math.max(1, d.documentElement.scrollHeight - window.innerHeight);
+      var p = clamp01(window.pageYOffset / max);
+
+      [aCore, aGlow].forEach(function (el) { el.style.strokeDashoffset = LEN_A * (1 - p); });
+      [bCore, bGlow].forEach(function (el) { el.style.strokeDashoffset = LEN_B * (1 - p); });
+
+      veil.style.opacity   = String(0.55 * ramp(p, .50, .60) - 0.23 * ramp(p, .78, .95));
+      bloom.style.opacity  = String(ramp(p, .50, .62) - 0.42 * ramp(p, .78, .95));
+      marks.style.opacity  = String(1 - ramp(p, .09, .16));
+      if (hint) hint.style.opacity = String(1 - ramp(p, .03, .08));
+
+      gA.style.opacity = String(1 - ramp(p, .81, .98));
+      [aGlow, bGlow].forEach(function (el) {
+        el.style.opacity = String(0.38 + 0.57 * ramp(p, .50, .68));
+      });
+
+      var rise = ramp(p, .80, .88);
+      circles.forEach(function (c) {
+        c.style.opacity = (parseFloat(c.getAttribute('data-o')) * rise).toFixed(3);
+      });
+    }
+    function onScrollEvt() { if (!ticking) { ticking = true; requestAnimationFrame(apply); } }
+
+    window.addEventListener('scroll', onScrollEvt, { passive: true });
+    window.addEventListener('resize', onScrollEvt);
+    apply();
+  }
+
+  /* ═══ SOUND --------------------------------------------------*/
+
+  var ambient = null;
+  var mode = null;              /* 'track' | 'ambient' | null = nothing loaded */
+  var playing = false;
+  var trackState = 'unknown';   /* 'unknown' | 'ready' | 'missing' */
+  var offered = false;          /* has the file chooser been offered yet?      */
+  var savedBlob = null;         /* the song they chose, kept in this browser   */
+  var usingBlob = false;
+  var ownedURL = null;
+  var longPressed = false;
+  var displayName = 'Tu Jaane Na';
+
+  var bgAudio = d.getElementById('bgAudio');
+  var picker = d.getElementById('songPicker');
+  var soundBtn = d.getElementById('soundBtn'), soundLabel = d.getElementById('soundLabel');
+  var toastEl = d.getElementById('toast'), toastTimer = null;
+
+  /* ── THE CLIP: 00:46 -> 01:49, looping that 63-second hook ── */
+  var CLIP_START = 46;                  /* 0:46  */
+  var CLIP_END = 109;                   /* 1:49  */
+  var LOOP_CLIP = true;                 /* false = stop at 1:49 instead */
+  var clipStart = CLIP_START, clipEnd = CLIP_END;
+  var srcIndex = 0;
+
+  /* Tried in order until one loads. The first entry ships with the page. */
+  var queryAudio = new URLSearchParams(location.search).get('audio');
+  /* The shipped copy first; the hosted copy is the fallback for builds that do
+     not carry the 1 MB asset next to them (e.g. the GitHub Pages copy). */
+  var TRACK_SOURCES = [
+    './tu-jaane-na.mp3',
+    'https://site-d0228ea15ede4df3bf8c4f0108aad660.freebuff.page/tu-jaane-na.mp3'
+  ];
+  if (queryAudio) { TRACK_SOURCES.unshift(queryAudio); bgAudio.src = queryAudio; }
+  bgAudio.preload = 'metadata';
+
+  function clampToClip() {
+    try {
+      if (bgAudio.currentTime < clipStart - 0.25 || bgAudio.currentTime >= clipEnd) {
+        bgAudio.currentTime = clipStart;
+      }
+    } catch (e) {}
+  }
+  function resetPill() {
+    mode = null; playing = false; setPill(false, 'Tap for sound');
+  }
+
+  soundBtn.title = soundBtn.getAttribute('aria-label') + ' \u00b7 plays 0:46 \u2013 1:49';
+
+  function toast(msg) {
+    toastEl.textContent = msg;
+    toastEl.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { toastEl.classList.remove('show'); }, 4200);
+  }
+  function setPill(on, label) {
+    soundBtn.classList.toggle('on', !!on);
+    soundBtn.setAttribute('aria-pressed', on ? 'true' : 'false');
+    soundLabel.textContent = label;
+  }
+
+  /* ── remember the chosen file so the real song plays on every reload ── */
+  function openDb() {
+    return new Promise(function (res, rej) {
+      if (!('indexedDB' in window)) return rej();
+      var rq;
+      try { rq = indexedDB.open('tu-jaane-na', 1); } catch (e) { return rej(); }
+      rq.onupgradeneeded = function () {
+        if (!rq.result.objectStoreNames.contains('songs')) rq.result.createObjectStore('songs');
+      };
+      rq.onsuccess = function () { res(rq.result); };
+      rq.onerror = function () { rej(); };
+    });
+  }
+  function remember(blob) {
+    return openDb().then(function (dbx) {
+      return new Promise(function (res, rej) {
+        var tx = dbx.transaction('songs', 'readwrite');
+        tx.objectStore('songs').put(blob, 'track');
+        tx.oncomplete = function () { res(true); };
+        tx.onerror = function () { rej(); };
+        tx.onabort = function () { rej(); };
+      });
+    }).catch(function () { return false; });
+  }
+  function recall() {
+    return openDb().then(function (dbx) {
+      return new Promise(function (res, rej) {
+        var rq = dbx.transaction('songs', 'readonly').objectStore('songs').get('track');
+        rq.onsuccess = function () { rq.result ? res(rq.result) : rej(); };
+        rq.onerror = function () { rej(); };
+      });
+    }).catch(function () { return null; });
+  }
+
+  function adoptSaved() {
+    if (!savedBlob || usingBlob) return;
+    var url = URL.createObjectURL(savedBlob);
+    ownedURL = url;
+    usingBlob = true;
+    trackState = 'ready';
+    displayName = 'Tu Jaane Na';
+    bgAudio.src = url;
+    bgAudio.load();
+  }
+
+  bgAudio.addEventListener('loadedmetadata', function () {
+    var dur = bgAudio.duration;
+    clipStart = CLIP_START; clipEnd = CLIP_END;
+    /* never try to seek past the end of a file that is shorter than the clip */
+    if (isFinite(dur) && dur > 0) {
+      if (dur <= CLIP_START + 1) clipStart = 0;
+      if (dur < CLIP_END) clipEnd = dur;
+    }
+    trackState = 'ready';
+    clampToClip();
+  });
+
+  /* the loop: 00:46 -> 01:49 -> 00:46 ... */
+  bgAudio.addEventListener('timeupdate', function () {
+    try {
+      if (bgAudio.currentTime >= clipEnd) {
+        if (LOOP_CLIP) { bgAudio.currentTime = clipStart; }
+        else { bgAudio.currentTime = clipStart; bgAudio.pause(); setPill(false, 'Sound off'); playing = false; }
+      }
+    } catch (e) {}
+  });
+
+  /* queue the next place the song might live. A local 404 can resolve before
+     this script runs, in which case no 'error' event ever reaches us — the
+     pill also calls this when it sees a dead <audio> element. */
+  function tryNextSource() {
+    if (usingBlob) return false;
+    if (srcIndex >= TRACK_SOURCES.length - 1) return false;
+    srcIndex++;
+    try { bgAudio.src = TRACK_SOURCES[srcIndex]; bgAudio.load(); } catch (e) { return false; }
+    trackState = 'unknown';
+    return true;
+  }
+
+  bgAudio.addEventListener('error', function () {
+    if (usingBlob) {                      /* even the saved copy failed */
+      resetPill();
+      toast('That audio file could not be played');
+      return;
+    }
+    /* try the next place the song might live before giving up */
+    if (tryNextSource()) return;
+    if (savedBlob) { adoptSaved(); return; }
+    trackState = 'missing';
+    if (mode === 'track') resetPill();
+  });
+
+  recall().then(function (b) {
+    savedBlob = b || null;
+    if (savedBlob && bgAudio.error) adoptSaved();
+  });
+
+  /* ── playback ── */
+  function playTrack() {
+    var p;
+    clampToClip();
+    try { p = bgAudio.play(); } catch (e) { p = null; }
+    if (!p || !p.then) { mode = 'track'; playing = true; setPill(true, 'Sound on'); return; }
+    p.then(function () {
+      mode = 'track'; playing = true;
+      setPill(true, 'Sound on');
+      soundBtn.setAttribute('aria-label', 'Sound on: ' + displayName);
+    }).catch(function () {
+      /* no usable track on this device yet - never silently substitute */
+      trackState = 'missing';
+      mode = null; playing = false;
+      setPill(false, 'Tap for sound');
+      toast('Hold the pill for a moment to choose your "Tu Jaane Na" file');
+    });
+  }
+
+  function openPicker() {
+    try { picker.value = ''; picker.click(); }
+    catch (e) { toast('Or open this page with ?audio=<url> pointing at your track'); }
+  }
+
+  function offerPicker() {
+    if (offered) { startAmbient(); return; }
+    offered = true;
+    openPicker();
+    toast('Choose "Tu Jaane Na" from this device');
+  }
+
+  function startAmbient() {
+    if (!ambient) ambient = createAmbient();
+    if (!ambient) { setPill(false, 'Sound unavailable'); toast('Audio is not supported here'); return; }
+    ambient.start();
+    mode = 'ambient'; playing = true;
+    setPill(true, 'Ambient bed');
+    toast('No song file loaded. Hold the pill to choose "Tu Jaane Na" from this device.');
+  }
+
+  picker.addEventListener('change', function () {
+    var f = picker.files && picker.files[0];
+    if (!f) return;                          /* they cancelled - say nothing */
+    if (f.type && f.type.indexOf('audio/') !== 0 &&
+        !/\.(mp3|m4a|aac|wav|ogg|opus|flac)$/i.test(f.name)) {
+      toast('That does not look like an audio file');
+      return;
+    }
+    var old = ownedURL;
+    var url = URL.createObjectURL(f);
+    ownedURL = url;
+    usingBlob = true;
+    trackState = 'ready';
+    displayName = f.name.replace(/\.[^.]+$/, '');
+    mode = null; playing = false;
+    bgAudio.src = url;
+    bgAudio.load();
+    if (old) URL.revokeObjectURL(old);
+    savedBlob = f;
+    remember(f);
+    playTrack();
+    toast('Playing ' + (f.name.length > 30 ? f.name.slice(0, 28) + '\u2026' : f.name));
+  });
+
+  /* ── the pill ── */
+  soundBtn.addEventListener('click', function () {
+    if (longPressed) { longPressed = false; return; }
+    if (mode === 'track') {
+      if (playing) { bgAudio.pause(); playing = false; setPill(false, 'Sound off'); }
+      else playTrack();
+      return;
+    }
+    if (mode === 'ambient') {
+      if (playing) { ambient.stop(); playing = false; setPill(false, 'Sound off'); }
+      else { ambient.start(); playing = true; setPill(true, 'Ambient bed'); }
+      return;
+    }
+    if (trackState === 'unknown' && bgAudio.error) {
+      /* the file beside the page is gone — hand over to the hosted copy */
+      if (!tryNextSource()) trackState = 'missing';
+    }
+    if (trackState === 'missing') { offerPicker(); return; }
+    playTrack();
+  });
+
+  /* hold the pill (or right-click it) to choose the file - never uploaded */
+  var pressTimer = null;
+  function pressDown() {
+    longPressed = false;
+    clearTimeout(pressTimer);
+    pressTimer = setTimeout(function () { longPressed = true; openPicker(); }, 520);
+  }
+  function pressUp() { clearTimeout(pressTimer); }
+  soundBtn.addEventListener('pointerdown', pressDown);
+  soundBtn.addEventListener('pointerup', pressUp);
+  soundBtn.addEventListener('pointercancel', pressUp);
+  soundBtn.addEventListener('pointerleave', pressUp);
+  soundBtn.addEventListener('contextmenu', function (e) { e.preventDefault(); clearTimeout(pressTimer); longPressed = true; openPicker(); });
+
+  setTimeout(function () {
+    if (trackState === 'missing' && mode !== 'track') {
+      toast('Tap for sound \u00b7 hold the pill to load "Tu Jaane Na" from your device');
+    }
+  }, 1900);
+
+  function createAmbient() {
+    var AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return null;
+    var ctx = new AC();
+    var master = ctx.createGain(); master.gain.value = 0;
+    var lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 850; lp.Q.value = .7;
+    var delay = ctx.createDelay(1.5); delay.delayTime.value = .44;
+    var fb = ctx.createGain(); fb.gain.value = .34;
+    var wet = ctx.createGain(); wet.gain.value = .28;
+    lp.connect(master);
+    lp.connect(delay); delay.connect(fb); fb.connect(delay); delay.connect(wet); wet.connect(master);
+    master.connect(ctx.destination);
+
+    var pad = ctx.createGain(); pad.gain.value = .1; pad.connect(lp);
+    [110, 164.81, 220, 329.63].forEach(function (f, i) {
+      var o = ctx.createOscillator();
+      o.type = (i % 2) ? 'triangle' : 'sine';
+      o.frequency.value = f * (i === 1 ? 1.0015 : 1);
+      var g = ctx.createGain(); g.gain.value = i === 0 ? .5 : .28;
+      o.connect(g); g.connect(pad); o.start();
+    });
+    var lfo = ctx.createOscillator(); lfo.frequency.value = .055;
+    var lfoG = ctx.createGain(); lfoG.gain.value = 300;
+    lfo.connect(lfoG); lfoG.connect(lp.frequency); lfo.start();
+
+    /* A, C, D, E, F, G# — A harmonic minor, played slow and low */
+    var scale = [220.00, 261.63, 293.66, 329.63, 349.23, 415.30];
+    var pattern = [0, 2, 4, 3, 1, 5, 4, 2], step = 0, timer = null;
+
+    function note() {
+      var t = ctx.currentTime + .04;
+      var o = ctx.createOscillator();
+      o.type = 'triangle';
+      o.frequency.value = scale[pattern[step % pattern.length]];
+      step++;
+      var g = ctx.createGain();
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.linearRampToValueAtTime(.15, t + .07);
+      g.gain.exponentialRampToValueAtTime(0.0008, t + 2.7);
+      o.connect(g); g.connect(lp);
+      o.start(t); o.stop(t + 3);
+    }
+    return {
+      start: function () {
+        if (ctx.state === 'suspended') ctx.resume();
+        master.gain.cancelScheduledValues(ctx.currentTime);
+        master.gain.setValueAtTime(master.gain.value, ctx.currentTime);
+        master.gain.linearRampToValueAtTime(.85, ctx.currentTime + 3);
+        if (!timer) { note(); timer = setInterval(note, 1650); }
+      },
+      stop: function () {
+        master.gain.cancelScheduledValues(ctx.currentTime);
+        master.gain.setValueAtTime(master.gain.value, ctx.currentTime);
+        master.gain.linearRampToValueAtTime(0, ctx.currentTime + .7);
+        if (timer) { clearInterval(timer); timer = null; }
+      }
+    };
+  }
+
+  /* ══════════════════════════════════════════════════════════════════
+     8 · CTAs
+     ══════════════════════════════════════════════════════════════════ */
+  d.getElementById('shareBtn').addEventListener('click', function () {
+    var payload = {
+      title: 'Tu Jaane Na // The Parallel Paths',
+      text: 'Some songs only exist because some words were never meant to be heard.',
+      url: location.href
+    };
+    if (navigator.share) {
+      navigator.share(payload).catch(function () { /* dismissed — not an error */ });
+      return;
+    }
+    var done = function () { toast('Thought copied to clipboard'); };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(payload.text + ' ' + payload.url).then(done, function () {
+        toast('Copy the link from your address bar');
+      });
+    } else {
+      toast('Copy the link from your address bar');
+    }
+  });
+
+  d.getElementById('rewindBtn').addEventListener('click', function () {
+    if (lenis) {
+      lenis.scrollTo(0, { duration: 1.8, easing: function (t) { return 1 - Math.pow(1 - t, 3); } });
+    } else {
+      window.scrollTo({ top: 0, behavior: REDUCED ? 'auto' : 'smooth' });
+    }
+  });
+
+  /* ══════════════════════════════════════════════════════════════════
+     9 · GO
+     ══════════════════════════════════════════════════════════════════ */
+  if (HAS_GSAP) { initGSAP(); }
+  else { initFallback(); d.documentElement.classList.add('no-gsap'); }
+})();
+</script>
+</body>
+</html>
